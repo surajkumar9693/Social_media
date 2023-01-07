@@ -28,7 +28,7 @@ const UserSchema = new mongoose.Schema(
             //min: 6,
         },
         phone:{
-            type: String,
+            type: Number,
             required: true,
         },
         profilePicture: {
