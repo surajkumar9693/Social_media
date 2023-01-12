@@ -44,6 +44,7 @@ const createUser = async function (req, res) {
         return res.status(201).send({ status: true, message: "User created successfully", data: newUser });
 
     } catch (error) {
+        console.log(error);
         return res.status(500).send({ status: false, message: error.message })
     }
 
@@ -84,8 +85,8 @@ const userLogin = async function (req, res) {
 //============================================== Get user ==============================================================
 
 
-const getUser = async function(req,res){
-    try{
+const getUser = async function (req, res) {
+    try {
         let data = req.query
         let userId = req.decodedToken.userId
         let { id } = data
@@ -104,8 +105,8 @@ const getUser = async function(req,res){
         return res.status(200).send({ status: true, message: "user fetched successfully", data: userProfile })
 
     }
-    catch(error){
-        return res.status(500).send({status: false, Error: error.message})
+    catch (error) {
+        return res.status(500).send({ status: false, Error: error.message })
     }
 }
 
@@ -136,7 +137,7 @@ const updateUser = async function (req, res) {
 
         if (!check.isValidRequestBody(data)) return res.status(400).send({ status: false, message: "Please enter data to update user" })
 
-        let user = await userModel.findOne({ _id: userId, isDeleted : false })
+        let user = await userModel.findOne({ _id: userId, isDeleted: false })
         if (!user) return res.status(404).send({ status: false, message: "user not found" })
 
         if (!check.isValidname(fullname)) return res.status(400).send({ status: false, message: "fullname should be in Alphabets" })
@@ -151,7 +152,7 @@ const updateUser = async function (req, res) {
         const encryptedPassword = await bcrypt.hash(password, 10)
         data.password = encryptedPassword
 
-        if (!check.isValidImage(files[0].originalname)){
+        if (!check.isValidImage(files[0].originalname)) {
             return res.status(400).send({ status: false, message: "Profile Image is required as an Image format" })
         }
         data.profilePicture = await uploadFile(files[0])
@@ -177,6 +178,10 @@ const deletuser = async function (req, res) {
         if (!UserId) {
             return res.status(400).send({ status: false, msg: "UserId not present" })
         }
+        if (!check.isValidObjectId(UserId)) {
+            return res.status(400).send({ status: false, message: "given UserId is not valid" })
+        }
+
         let findUser = await userModel.findOne({ _id: UserId, isDeleted: false })
         if (!findUser) {
             return res.status(404).send({ status: false, message: "user not found or already delete" })
@@ -193,4 +198,100 @@ const deletuser = async function (req, res) {
 }
 
 
-module.exports = { createUser, userLogin, deletuser, updateUser, getUser }
+//---------------------------  follow user-------------------------------------
+
+const followUser = async function (req, res) {
+    try {
+        let UserId = req.params.UserId
+        if (!UserId) {
+            return res.status(400).send({ status: false, msg: "UserId not present in params" })
+        }
+        if (!check.isValidObjectId(UserId)) {
+            return res.status(400).send({ status: false, message: "given UserId is not valid" })
+        }
+        let findUser = await userModel.findOne({ _id: UserId })
+        if (!findUser) {
+            return res.status(404).send({ status: false, message: "user not found " })
+        }
+
+        let currentUserId = req.body.currentUserId
+        if (!currentUserId) {
+            return res.status(400).send({ status: false, msg: "currentUserId not present in params" })
+        }
+        if (!check.isValidObjectId(currentUserId)) {
+            return res.status(400).send({ status: false, message: "given currentUserId is not valid" })
+        }
+        let findcurrentUser = await userModel.findOne({ _id: currentUserId })
+        if (!findcurrentUser) {
+            return res.status(404).send({ status: false, message: "user not found " })
+        }
+        if (req.params.UserId != req.body.currentUserId) {
+
+            let followUser = await userModel.findOneAndUpdate(
+                { _id: UserId }, { $push: { followers: req.body.currentUser } }, { new: true })
+
+            let currentfollowUser = await userModel.findOneAndUpdate(
+                { _id: currentUserId }, { $push: { followings: req.params.UserId } }, { new: true })
+
+            return res.status(200).send({ status: true, message: "User sucessfully fellow", followUser, currentfollowUser });
+        }
+        else {
+            return res.status(403).send("you cant follow yourself");
+        }
+
+
+    } catch (error) {
+        return res.status(500).send({ status: false, message: error.message })
+    }
+}
+
+//---------------------------  unfollow  user-------------------------------------
+
+const unfollowUser = async function (req, res) {
+    try {
+        let UserId = req.params.UserId
+        if (!UserId) {
+            return res.status(400).send({ status: false, msg: "UserId not present in params" })
+        }
+        if (!check.isValidObjectId(UserId)) {
+            return res.status(400).send({ status: false, message: "given UserId is not valid" })
+        }
+        let findUser = await userModel.findOne({ _id: UserId })
+        if (!findUser) {
+            return res.status(404).send({ status: false, message: "user not found " })
+        }
+
+        let currentUserId = req.body.currentUserId
+        if (!currentUserId) {
+            return res.status(400).send({ status: false, msg: "currentUserId not present in params" })
+        }
+        if (!check.isValidObjectId(currentUserId)) {
+            return res.status(400).send({ status: false, message: "given currentUserId is not valid" })
+        }
+        let findcurrentUser = await userModel.findOne({ _id: currentUserId })
+        if (!findcurrentUser) {
+            return res.status(404).send({ status: false, message: "user not found " })
+        }
+        if (req.params.UserId != req.body.currentUserId) {
+
+            let unfollowUser = await userModel.findOneAndUpdate(
+                { _id: UserId }, { $pull: { followers: req.body.currentUser } }, { new: true })
+
+            let currentunfollowUser = await userModel.findOneAndUpdate(
+                { _id: currentUserId }, { $pull: { followings: req.params.UserId } }, { new: true })
+
+            return res.status(200).send({ status: true, message: "User sucessfully unfollow", unfollowUser, currentunfollowUser });
+        }
+        else {
+            return res.status(403).send("you cant follow yourself");
+        }
+
+
+    } catch (error) {
+        return res.status(500).send({ status: false, message: error.message })
+    }
+}
+
+
+
+module.exports = { createUser, userLogin, deletuser, updateUser, getUser, followUser, unfollowUser }

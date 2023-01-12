@@ -2,14 +2,14 @@ const express = require('express')
 const mongoose = require('mongoose')
 const app = express()
 const multer = require('multer')
-const route = require("./routes/route")
+const route = require("./routes/route") 
 mongoose.set('strictQuery', true)
 app.use(express.json())
 app.use(multer().any());
 
-mongoose.connect('mongodb://localhost:27017/socialMediaApp',{
+mongoose.connect('mongodb+srv://surajkumar96:6i0d4EhtRtZ5xCEQ@cluster0.mqcx8wl.mongodb.net/test',{
     useNewUrlParser:true
-})
+}) 
 .then(()=>{
     console.log("mongoDb is connected")
 })
