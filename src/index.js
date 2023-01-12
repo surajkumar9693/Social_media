@@ -7,7 +7,7 @@ mongoose.set('strictQuery', true)
 app.use(express.json())
 app.use(multer().any());
 
-mongoose.connect('mongodb+srv://surajkumar96:6i0d4EhtRtZ5xCEQ@cluster0.mqcx8wl.mongodb.net/test',{
+mongoose.connect('mongodb+srv://surajkumar96:6i0d4EhtRtZ5xCEQ@cluster0.mqcx8wl.mongodb.net/SocialMedia',{
     useNewUrlParser:true
 }) 
 .then(()=>{

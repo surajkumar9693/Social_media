@@ -110,6 +110,34 @@ const getUser = async function (req, res) {
     }
 }
 
+// const getUser = async function (req, res) {
+//     try {
+
+
+
+//         let userId = req.decodedToken.userId
+//         console.log(userId)
+
+        // if (req.query) {
+        //     let data = req.query
+
+        //     let { fullname, username, id } = data
+
+        //     let user = await userModel.findOne({ $or: [{ 'fullname': fullname }, { 'username': username }] })
+        //     //console.log(user)
+        //     if (user.length === 0) return res.status(400).send({ status: false, message: 'no user found' })
+        //     return res.status(200).send({ status: true, message: "user fetched successfully", data: user })
+
+        // }
+
+
+//     }
+//     catch (error) {
+//         return res.status(500).send({ status: false, Error: error.message })
+//     }
+// }
+
+
 
 
 
@@ -122,42 +150,45 @@ const updateUser = async function (req, res) {
         let data = req.body
         const files = req.files
         let userId = req.params.userId
+        console.log(userId)
         let { fullname, username, phone, email, password } = data
 
-        let userData = {}
+        //   let userData = {}
 
-        if (fullname) userData.fullname = fullname
-        if (username) userData.username = username
-        if (phone) userData.phone = phone
-        if (email) userData.email = email
-        if (password) userData.password = password
-        if (files) userData.files = files
+        // if (fullname) userData.fullname = fullname
+        // if (username) userData.username = username
+        // if (phone) userData.phone = phone
+        // if (email) userData.email = email
+        // if (password) userData.password = password
+        // if (files) userData.files = files
 
         if (!check.isValidObjectId(userId)) return res.status(400).send({ status: false, message: "given UserId is not valid" })
 
         if (!check.isValidRequestBody(data)) return res.status(400).send({ status: false, message: "Please enter data to update user" })
 
-        let user = await userModel.findOne({ _id: userId, isDeleted: false })
+        let user = await userModel.findOne({ userId, isDeleted: false })
         if (!user) return res.status(404).send({ status: false, message: "user not found" })
 
         if (!check.isValidname(fullname)) return res.status(400).send({ status: false, message: "fullname should be in Alphabets" })
         if (!check.isValidUserName(username)) return res.status(400).send({ status: false, message: "fullname should be valid" })
-        if (!check.isValidPhone(phone)) return res.status(400).send({ status: false, message: "Phone should be valid" })
-        if (!check.isVAlidEmail(email)) return res.status(400).send({ status: false, message: "Email should be valid" })
+        // if (!check.isValidPhone(phone)) return res.status(400).send({ status: false, message: "Phone should be valid" })
+        // if (!check.isVAlidEmail(email)) return res.status(400).send({ status: false, message: "Email should be valid" })
 
         let duplicate = await userModel.findOne({ $or: [{ email }, { phone }] });
         if (duplicate) return res.status(400).send({ status: false, message: "Phone or Email are already registered" });
 
-        if (!check.isValidPassword(password)) return res.status(400).send({ status: false, message: "Password should be valid" })
-        const encryptedPassword = await bcrypt.hash(password, 10)
-        data.password = encryptedPassword
+        // if (!check.isValidPassword(password)) return res.status(400).send({ status: false, message: "Password should be valid" })
+        // const encryptedPassword = await bcrypt.hash(password, 10)
+        // data.password = encryptedPassword
 
-        if (!check.isValidImage(files[0].originalname)) {
-            return res.status(400).send({ status: false, message: "Profile Image is required as an Image format" })
-        }
-        data.profilePicture = await uploadFile(files[0])
+        // if (!check.isValidImage(files[0].originalname)) {
+        //     return res.status(400).send({ status: false, message: "Profile Image is required as an Image format" })
+        // }
+        // data.profilePicture = await uploadFile(files[0])
 
-        let updateUser = await userModel.findOneAndUpdate({ _id: userId }, { $set: userData }, { new: true })
+        data ={fullname}
+        console.log(data)
+        let updateUser = await userModel.findOneAndUpdate({ userId }, { $set: data }, { new: true })
 
         return res.status(200).send({ status: true, message: "user updated successfully", data: updateUser })
 
