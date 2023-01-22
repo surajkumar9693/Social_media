@@ -87,59 +87,21 @@ const userLogin = async function (req, res) {
 
 const getUser = async function (req, res) {
     try {
-        let data = req.query
-        let userId = req.decodedToken.userId
-        let { id } = data
-        let userData = { userId: userId, isDeleted: false }
-
-        let user = await userModel.findById({ _id: userId })
-        if (!user) {
-            return res.status(404).send({ status: false, message: 'user id does not exist' })
+        if (req.query.userId) {
+            const otherUser = await userModel.findById(req.query.userId);
+            const { password, updatedAt, ...other } = otherUser._doc;
+            return res.status(200).send({ status: true, message: "user fetched successfully", data: other })
         }
 
-        if (id) userData.id = id
-
-        let userProfile = await userModel.find(userData)
-        if (userProfile.length === 0) return res.status(400).send({ status: false, message: 'no user found' })
-
-        return res.status(200).send({ status: true, message: "user fetched successfully", data: userProfile })
+        const userLoggedIn = await userModel.findById(req.decodedToken.userId);
+        const { password, updatedAt, ...other } = userLoggedIn._doc;
+        return res.status(200).send({ status: true, message: "user fetched successfully", data: other })
 
     }
     catch (error) {
         return res.status(500).send({ status: false, Error: error.message })
     }
 }
-
-// const getUser = async function (req, res) {
-//     try {
-
-
-
-//         let userId = req.decodedToken.userId
-//         console.log(userId)
-
-        // if (req.query) {
-        //     let data = req.query
-
-        //     let { fullname, username, id } = data
-
-        //     let user = await userModel.findOne({ $or: [{ 'fullname': fullname }, { 'username': username }] })
-        //     //console.log(user)
-        //     if (user.length === 0) return res.status(400).send({ status: false, message: 'no user found' })
-        //     return res.status(200).send({ status: true, message: "user fetched successfully", data: user })
-
-        // }
-
-
-//     }
-//     catch (error) {
-//         return res.status(500).send({ status: false, Error: error.message })
-//     }
-// }
-
-
-
-
 
 
 //============================================== Update user ==============================================================
@@ -147,65 +109,76 @@ const getUser = async function (req, res) {
 
 const updateUser = async function (req, res) {
     try {
-        let data = req.body
-        const files = req.files
         let userId = req.params.userId
-        console.log(userId)
-        let { fullname, username, phone, email, password } = data
+        const files = req.files
+        let userdata = req.body
 
-        //   let userData = {}
+        if (Object.keys(userdata).length == 0 && files == undefined) { return res.status(400).send({ status: false, message: "plz enter some data to update" }) }
 
-        // if (fullname) userData.fullname = fullname
-        // if (username) userData.username = username
-        // if (phone) userData.phone = phone
-        // if (email) userData.email = email
-        // if (password) userData.password = password
-        // if (files) userData.files = files
+        let { fullname, email, phone, password } = userdata;
 
-        if (!check.isValidObjectId(userId)) return res.status(400).send({ status: false, message: "given UserId is not valid" })
+        {
+            if (!check.isValidname(fullname)) {
+                return res.status(400).send({ status: false, message: "Fname should be valid" })
+            }
+            let duplicatefullname = await userModel.findOne({ fullname })
+            if (duplicatefullname) return res.status(400).send({ status: false, message: "This name is already exists" });
+            userdata.fullname = fullname
+        }
 
-        if (!check.isValidRequestBody(data)) return res.status(400).send({ status: false, message: "Please enter data to update user" })
+        if (email) {
+            if (!check.isVAlidEmail(email)) { return res.status(400).send({ status: false, message: "Email should valid" }) };
+            let duplicateEmail = await userModel.findOne({ email: email })
+            if (duplicateEmail) return res.status(400).send({ status: false, message: "This email is already exists" });
+            userdata.email = email;
+        }
 
-        let user = await userModel.findOne({ userId, isDeleted: false })
-        if (!user) return res.status(404).send({ status: false, message: "user not found" })
+        if (Object.keys(userdata).includes("password")) {
+            if (password.length < 8 || password.length > 15) {
+                return res.status(400).send({ status: false, message: "password length should be between 8 to 15", });
+            }
+            if (!check.isValidPassword(password)) {
+                return res.status(400).send({ status: false, message: "Password is not valid " });
+            }
+            password = await bcrypt.hash(password, saltRounds);
+            userdata.password = password;
+        }
 
-        if (!check.isValidname(fullname)) return res.status(400).send({ status: false, message: "fullname should be in Alphabets" })
-        if (!check.isValidUserName(username)) return res.status(400).send({ status: false, message: "fullname should be valid" })
-        // if (!check.isValidPhone(phone)) return res.status(400).send({ status: false, message: "Phone should be valid" })
-        // if (!check.isVAlidEmail(email)) return res.status(400).send({ status: false, message: "Email should be valid" })
+        if (phone) {
+            if ((!check.isValidPhone(phone))) { return res.status(400).send({ status: false, message: "Phone should be valid" }) };
+            let duplicatePhone = await userModel.findOne({ phone: phone })
+            if (duplicatePhone) return res.status(400).send({ status: false, message: "This phone number is already exists" });
+        }
 
-        let duplicate = await userModel.findOne({ $or: [{ email }, { phone }] });
-        if (duplicate) return res.status(400).send({ status: false, message: "Phone or Email are already registered" });
+        if (files && files.length != 0) {
+            if (!check.isValidImage(files[0].originalname))
+                return res.status(400).send({ status: false, message: "Profile Image is required only in Image format", });
+            userdata.profileImage = await uploadFile(files[0]);
+        }
 
-        // if (!check.isValidPassword(password)) return res.status(400).send({ status: false, message: "Password should be valid" })
-        // const encryptedPassword = await bcrypt.hash(password, 10)
-        // data.password = encryptedPassword
+        const updateUser = await userModel.findOneAndUpdate(
+            { _id: userId, isDeleted: false },
+            userdata,
+            { new: true }
+        );
 
-        // if (!check.isValidImage(files[0].originalname)) {
-        //     return res.status(400).send({ status: false, message: "Profile Image is required as an Image format" })
-        // }
-        // data.profilePicture = await uploadFile(files[0])
+        if (!updateUser) return res.status(400).send({ status: false, message: "no user prsenet for updation with this id" })
 
-        data ={fullname}
-        console.log(data)
-        let updateUser = await userModel.findOneAndUpdate({ userId }, { $set: data }, { new: true })
+        return res.status(200).send({ status: true, message: "successfully updated", data: updateUser });
 
-        return res.status(200).send({ status: true, message: "user updated successfully", data: updateUser })
-
-    }
-    catch (error) {
-        return res.status(500).send({ status: false, Error: error.message })
+    } catch (error) {
+        res.status(500).send({ status: false, message: error.message });
     }
 }
 
 
 
-//---------------------------  Delete user-------------------------------------
+//---------------------------Delete user-------------------------------------
 
 
-const deletuser = async function (req, res) {
+const deleteuser = async function (req, res) {
     try {
-        let UserId = req.params.UserId
+        let UserId = req.params.userId
         if (!UserId) {
             return res.status(400).send({ status: false, msg: "UserId not present" })
         }
@@ -221,7 +194,7 @@ const deletuser = async function (req, res) {
             { $set: { isDeleted: true } },
             { new: true });
 
-        return res.status(200).send({ status: true, message: "User sucessfully deleted", deleteduser });
+        return res.status(200).send({ status: true, message: "User sucessfully deleted" });
 
     } catch (error) {
         return res.status(500).send({ status: false, message: error.message })
@@ -325,4 +298,4 @@ const unfollowUser = async function (req, res) {
 
 
 
-module.exports = { createUser, userLogin, deletuser, updateUser, getUser, followUser, unfollowUser }
+module.exports = { createUser, userLogin, getUser, updateUser, deleteuser, followUser, unfollowUser }
