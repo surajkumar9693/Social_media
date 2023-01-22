@@ -1,6 +1,6 @@
 const express = require("express")
 const router = express.Router()
-const { createUser, userLogin ,followUser,unfollowUser,getUser ,updateUser} = require("../controllers/userController")
+const { createUser, userLogin ,followUser,unfollowUser,getUser ,updateUser,deleteuser} = require("../controllers/userController")
 const { createpost,getpost ,updatepost,deletepost,likepost} = require("../controllers/postController")
 
 const {authentication, authorisation }= require("../middleware/auth")
@@ -15,7 +15,9 @@ router.post("/login", userLogin)
 
 router.get("/getUser",authentication,getUser)
 
-router.put("/updateUser/:userId",updateUser)
+router.put("/updateUser/:userId",authentication,authorisation,updateUser)
+
+router.delete("/deleteUser/:userId",authentication,authorisation,deleteuser)
 
 router.put("/:userId/follow", followUser)
 
