@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken')
-const userModel = require('../controllers/userController')
+const userModel = require('../models/userModel')
 
 
 const authentication = async function (req, res, next) {
@@ -18,6 +18,7 @@ const authentication = async function (req, res, next) {
             }
 
             req.decodedToken = decoded
+            //console.log(req.decodedToken.userId)
             next()
         })
 
@@ -28,13 +29,14 @@ const authentication = async function (req, res, next) {
 //=================================================================================================================================================
 const authorisation = async function (req, res, next) {
     try {
-        let userId = req.decodedToken.userId
+        let userId = req.params.userId
+        
+        let user = await userModel.findById(userId)
 
-        let user = await userModel.findById({ _id: userId })
         if (!user) {
             return res.status(404).send({ status: false, message: 'user id does not exist' })
         }
-        if (userId != user._id) {
+        if (req.decodedToken.userId != user._id) {
             return res.status(403).send({ status: false, message: 'not authorised' })
         }
         next()
