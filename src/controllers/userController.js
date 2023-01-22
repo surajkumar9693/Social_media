@@ -206,42 +206,59 @@ const deleteuser = async function (req, res) {
 
 const followUser = async function (req, res) {
     try {
-        let UserId = req.params.UserId
-        if (!UserId) {
-            return res.status(400).send({ status: false, msg: "UserId not present in params" })
+
+        let selfId = req.decodedToken.userId
+        let persontofollow = req.params.userId
+
+        if (selfId === persontofollow) {
+            return res.status(400).send({ status: false, message: "you cant follow yourself" })
         }
-        if (!check.isValidObjectId(UserId)) {
-            return res.status(400).send({ status: false, message: "given UserId is not valid" })
-        }
-        let findUser = await userModel.findOne({ _id: UserId })
-        if (!findUser) {
-            return res.status(404).send({ status: false, message: "user not found " })
+        let persontofollowData = await userModel.findById(persontofollow)
+        let persontofollower = persontofollowData.followers
+        for (let i = 0; i < persontofollower.length; i++) {
+            if (persontofollower.includes(selfId)) {
+                await userModel.findByIdAndUpdate(
+                    persontofollow,
+                    {
+                        $pull: { followers: selfId }
+                    },
+                    { new: true }
+                )
+            }
+            return res.status(200).send({ status: true, message: `You're now unfollowing ${persontofollow}.` })
         }
 
-        let currentUserId = req.body.currentUserId
-        if (!currentUserId) {
-            return res.status(400).send({ status: false, msg: "currentUserId not present in params" })
+        let persontounfollowData = await userModel.findById(selfId)
+        let persontounfollower = persontounfollowData.followings
+        for (let i = 0; i < persontounfollower.length; i++) {
+            if (persontounfollower.includes(persontofollow)) {
+                await userModel.findByIdAndUpdate(
+                    selfId,
+                    {
+                        $pull: { followings: persontofollow }
+                    },
+                    { new: true }
+                )
+            }
+            return res.status(200).send({ status: true, message: `You're now unfollowing ${persontofollow}.` })
         }
-        if (!check.isValidObjectId(currentUserId)) {
-            return res.status(400).send({ status: false, message: "given currentUserId is not valid" })
-        }
-        let findcurrentUser = await userModel.findOne({ _id: currentUserId })
-        if (!findcurrentUser) {
-            return res.status(404).send({ status: false, message: "user not found " })
-        }
-        if (req.params.UserId != req.body.currentUserId) {
 
-            let followUser = await userModel.findOneAndUpdate(
-                { _id: UserId }, { $push: { followers: req.body.currentUser } }, { new: true })
 
-            let currentfollowUser = await userModel.findOneAndUpdate(
-                { _id: currentUserId }, { $push: { followings: req.params.UserId } }, { new: true })
-
-            return res.status(200).send({ status: true, message: "User sucessfully fellow", followUser, currentfollowUser });
-        }
-        else {
-            return res.status(403).send("you cant follow yourself");
-        }
+        let followed = await userModel.findByIdAndUpdate(
+            persontofollow,
+            {
+                $push: { followers: selfId }
+            },
+            { new: true }
+        )
+        let following = await userModel.findByIdAndUpdate(
+            selfId,
+            {
+                $push: { followings: persontofollow }
+            },
+            { new: true }
+        )
+        return res.status(200).send({ status: true, message: `You're now following ${persontofollow}.` })
 
 
     } catch (error) {
@@ -253,42 +270,59 @@ const followUser = async function (req, res) {
 
 const unfollowUser = async function (req, res) {
     try {
-        let UserId = req.params.UserId
-        if (!UserId) {
-            return res.status(400).send({ status: false, msg: "UserId not present in params" })
-        }
-        if (!check.isValidObjectId(UserId)) {
-            return res.status(400).send({ status: false, message: "given UserId is not valid" })
-        }
-        let findUser = await userModel.findOne({ _id: UserId })
-        if (!findUser) {
-            return res.status(404).send({ status: false, message: "user not found " })
+        let selfId = req.decodedToken.userId
+        let persontounfollow = req.params.userId
+
+        let persontofollowData = await userModel.findById(persontounfollow)
+        let persontofollower = persontofollowData.followers
+        for (let i = 0; i < persontofollower.length; i++) {
+            if (persontofollower.includes(selfId)) {
+                await userModel.findByIdAndUpdate(
+                    persontounfollow,
+                    {
+                        $push: { followers: selfId }
+                    },
+                    { new: true }
+                )
+            }
+            return res.status(200).send({ status: true, message: `You're now following ${persontounfollow}.` })
         }
 
-        let currentUserId = req.body.currentUserId
-        if (!currentUserId) {
-            return res.status(400).send({ status: false, msg: "currentUserId not present in params" })
+        let persontounfollowData = await userModel.findById(selfId)
+        let persontounfollower = persontounfollowData.followings
+        for (let i = 0; i < persontounfollower.length; i++) {
+            if (persontounfollower.includes(persontounfollow)) {
+                await userModel.findByIdAndUpdate(
+                    selfId,
+                    {
+                        $push: { followings: persontounfollow }
+                    },
+                    { new: true }
+                )
+            }
+            return res.status(200).send({ status: true, message: `You're now following ${persontounfollow}.` })
         }
-        if (!check.isValidObjectId(currentUserId)) {
-            return res.status(400).send({ status: false, message: "given currentUserId is not valid" })
-        }
-        let findcurrentUser = await userModel.findOne({ _id: currentUserId })
-        if (!findcurrentUser) {
-            return res.status(404).send({ status: false, message: "user not found " })
-        }
-        if (req.params.UserId != req.body.currentUserId) {
 
-            let unfollowUser = await userModel.findOneAndUpdate(
-                { _id: UserId }, { $pull: { followers: req.body.currentUser } }, { new: true })
 
-            let currentunfollowUser = await userModel.findOneAndUpdate(
-                { _id: currentUserId }, { $pull: { followings: req.params.UserId } }, { new: true })
+        if (selfId === persontounfollow) {
+            return res.status(400).send({ status: false, message: "you cant follow yourself" })
+        }
 
-            return res.status(200).send({ status: true, message: "User sucessfully unfollow", unfollowUser, currentunfollowUser });
-        }
-        else {
-            return res.status(403).send("you cant follow yourself");
-        }
+        let followed = await userModel.findByIdAndUpdate(
+            persontounfollow,
+            {
+                $pull: { followers: selfId }
+            },
+            { new: true }
+        )
+        let following = await userModel.findByIdAndUpdate(
+            selfId,
+            {
+                $pull: { followings: persontounfollow }
+            },
+            { new: true }
+        )
+        return res.status(200).send({ status: true, message: `You're unfollowed ${persontounfollow}.` })
 
 
     } catch (error) {

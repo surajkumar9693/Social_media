@@ -19,9 +19,9 @@ router.put("/updateUser/:userId",authentication,authorisation,updateUser)
 
 router.delete("/deleteUser/:userId",authentication,authorisation,deleteuser)
 
-router.put("/:userId/follow", followUser)
+router.put("/follow/:userId", authentication,followUser)
 
-router.put("/:userId/unfollow", unfollowUser)
+router.put("/unfollow/:userId",authentication,unfollowUser)
 
 router.post("/createpost/:userId",createpost)
 
