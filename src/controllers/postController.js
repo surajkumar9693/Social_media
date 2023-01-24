@@ -10,7 +10,7 @@ const createpost = async function (req, res) {
     try {
         let data = req.body
         if (!check.isValidRequestBody(data)) { return res.status(400).send({ status: false, message: "Please enter data to create user" }) }
-        let { userId, description, image, likes } = data
+        let { userId, description, likes } = data
 
         if (!userId) {
             return res.status(400).send({ status: false, msg: "UserId not present " })
@@ -29,9 +29,9 @@ const createpost = async function (req, res) {
             return res.status(400).send({ status: false, message: "Profile Image is required" });
         else if (!check.isValidImage(files[0].originalname))
             return res.status(400).send({ status: false, message: "Profile Image is required as an Image format" });
-        else data.profilePicture = await uploadFile(files[0]);
+        else data.image = await uploadFile(files[0]);
 
-        const userDetails = { userId, description, likes, profilePicture: data.profilePicture }
+        const userDetails = { userId, description, likes, image: data.image }
         const newpost = await postModel.create(userDetails);
         return res.status(201).send({ status: true, message: "post created successfully", data: newpost });
 
@@ -46,18 +46,20 @@ const createpost = async function (req, res) {
 
 const getpost = async function (req, res) {
     try {
-        let postId = req.params.postId
-        if (!postId) {
-            return res.status(400).send({ status: false, msg: "postId not present" })
+        let userId = req.params.userId
+        let postId = req.query.postId
+
+        if (postId) {
+            let find = await postModel.findOne({ _id: postId })
+            if (!find) {
+                return res.status(404).send({ status: false, message: "post not found " })
+            }
+            let findpost = await postModel.find({ _id: postId })
+            return res.status(200).send({ status: true, message: "fetch post", findpost });
+
         }
-        if (!check.isValidObjectId(postId)) {
-            return res.status(400).send({ status: false, message: "given postId is not valid" })
-        }
-        let find = await postModel.findOne({ _id: postId })
-        if (!find) {
-            return res.status(404).send({ status: false, message: "post not found " })
-        }
-        let findpost = await postModel.find({ _id: postId })
+        let findpost = await postModel.find({ userId })
+        console.log(findpost)
         return res.status(200).send({ status: true, message: "fetch post", findpost });
 
     } catch (error) {
@@ -70,33 +72,22 @@ const getpost = async function (req, res) {
 const updatepost = async function (req, res) {
     try {
         let postId = req.params.postId
-        if (!postId) {
-            return res.status(400).send({ status: false, msg: "postId not present" })
-        }
-        if (!check.isValidObjectId(postId)) {
-            return res.status(400).send({ status: false, message: "given postId is not valid" })
-        }
-        let find = await postModel.findOne({ _id: postId })
-        if (!find) {
-            return res.status(404).send({ status: false, message: "post not found " })
-        }
-        let UserId = req.body.UserId
-        if (!UserId) {
-            return res.status(400).send({ status: false, msg: "UserId not present in params" })
-        }
-        if (!check.isValidObjectId(UserId)) {
-            return res.status(400).send({ status: false, message: "given UserId is not valid" })
-        }
-        let findcurrentUser = await userModel.findOne({ _id: UserId })
-        if (!findcurrentUser) {
-            return res.status(404).send({ status: false, message: "user not found " })
-        }
-        if (post.userId === req.body.userId) {
-            await post.updateOne({ $set: req.body });
-            res.status(200).json("the post has been updated");
-        } else {
-            res.status(403).json("you can update only your post");
-        }
+        let userId = req.params.userId
+
+        let data = req.body
+
+        let user = await userModel.findOne({ userId, isDeleted: false })
+        if (!user) return res.status(404).send({ status: false, message: "userid is not found" })
+
+        let post = await postModel.findOne({ _id: postId, isDeleted: false })
+        if (!post) return res.status(404).send({ status: false, message: "post not found" })
+
+        if (userId != post.userId) return res.status(403).send({ status: false, message: "you can update only yours" })
+
+        let newData = await postModel.findOneAndUpdate({ _id: postId }, data, { new: true })
+        return res.status(200).send({ status: true, message: "post updated successfully!", data: newData })
+
+
     } catch (error) {
         return res.status(500).send({ status: false, message: error.message })
     }
@@ -136,6 +127,7 @@ const deletepost = async function (req, res) {
 const likepost = async function (req, res) {
     try {
         let postId = req.params.postId
+        let userId = req.params.userId
         if (!postId) {
             return res.status(400).send({ status: false, msg: "postId not present " })
         }
@@ -144,14 +136,14 @@ const likepost = async function (req, res) {
         }
         let findpost = await postModel.findOne({ _id: postId })
 
-        if (!findpost.likes.includes(req.body.userId)) {
+        if (!findpost.likes.includes(userId)) {
             let like = await postModel.findOneAndUpdate(
-                { _id: postId }, { $push: { likes: req.body.userId } }, { new: true })
+                { _id: postId }, { $push: { likes: userId } }, { new: true })
             return res.status(200).send({ status: true, message: "The post has been liked", like });
         }
         else {
             let dislike = await postModel.findOneAndUpdate(
-                { _id: postId }, { $pull: { likes: req.body.userId } }, { new: true })
+                { _id: postId }, { $pull: { likes: userId } }, { new: true })
             return res.status(200).send({ status: true, message: "The post has been disliked", dislike });
         }
 

@@ -23,15 +23,15 @@ router.put("/follow/:userId", authentication,followUser)
 
 router.put("/unfollow/:userId",authentication,unfollowUser)
 
-router.post("/createpost/:userId",createpost)
+router.post("/createpost",createpost)
 
 router.get("/getpost/:userId",getpost)
 
-router.put("/updatepost/:userId",updatepost)
+router.put("/updatepost/:userId/:postId",updatepost)
 
-router.delete("/deletepost/:userId",deletepost)
+router.delete("/deletepost/:userId/:postId",deletepost)
 
-router.post("/likepost/:userId",likepost)
+router.post("/likepost/:userId/:postId",likepost)
 
 
 module.exports = router
